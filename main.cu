@@ -16,12 +16,12 @@ __device__ bool is_slime_chunk(int64_t world_seed, int x_chunk, int z_chunk) {
                          ((uint64_t)x_chunk * x_chunk * 0x4C1906) + 
                          ((uint64_t)x_chunk * 0x5AC0DB) + 
                          ((uint64_t)z_chunk * z_chunk * 0x4307A7) + 
-                         ((uint64_t)z_chunk * 0x5F24F);
+                         ((uint64_t)z_chunk * 0x5F24F); 
 
-    uint64_t internal_state = (slime_seed ^ 0x5E434E432ULL) & 0xFFFFFFFFFFFFULL;
-    uint64_t advanced_state = (internal_state * 0x5DEECE66DULL + 0xBULL) & 0xFFFFFFFFFFFFULL;
+    uint64_t internal_state = (slime_seed ^ 0x5E434E432ULL) & 0xFFFFFFFFFFFFULL; 
+    uint64_t advanced_state = (internal_state * 0x5DEECE66DULL + 0xBULL) & 0xFFFFFFFFFFFFULL; 
 
-    return ((advanced_state >> 17) % 10) == 0;
+    return ((advanced_state >> 17) % 10) == 0; 
 }
 
 __global__ void search_kernel(int64_t start_seed, int64_t batch_size, ChunkLocation* locs, int loc_count) {
@@ -38,6 +38,7 @@ __global__ void search_kernel(int64_t start_seed, int64_t batch_size, ChunkLocat
             }
         }
         
+        // Reporting high-density areas
         if (match_count >= 20) {
             printf("Seed: %lld | Center: (%d, %d) | Matches: %d/25\n", 
                    (long long)seed, locs[i].x, locs[i].z, match_count);
@@ -63,12 +64,12 @@ int main() {
 
     std::string line;
     while (std::getline(file, line)) {
-        const char* x_ptr = strstr(line.c_str(), "x=");
-        const char* z_ptr = strstr(line.c_str(), "z=");
+        const char* x_ptr = strstr(line.c_str(), "x="); 
+        const char* z_ptr = strstr(line.c_str(), "z="); 
         if (x_ptr && z_ptr) {
             ChunkLocation loc;
-            sscanf(x_ptr, "x=%d", &loc.x);
-            sscanf(z_ptr, "z=%d", &loc.z);
+            sscanf(x_ptr, "x=%d", &loc.x); 
+            sscanf(z_ptr, "z=%d", &loc.z); 
             host_locs.push_back(loc);
         }
     }
@@ -77,15 +78,15 @@ int main() {
     cudaMalloc(&device_locs, host_locs.size() * sizeof(ChunkLocation));
     cudaMemcpy(device_locs, host_locs.data(), host_locs.size() * sizeof(ChunkLocation), cudaMemcpyHostToDevice);
 
-    int64_t total_seeds = 1000000000000; 
-    int64_t batch_size = 1000000000; 
-    int threads = 256;
-    int blocks = (batch_size + threads - 1) / threads;
+    int64_t total_seeds = 250000000000; 
+    int64_t batch_size = 250000000;
+    int threads_per_block = 512;
+    int blocks_per_grid = (batch_size + threads_per_block - 1) / threads_per_block;
 
     for (int64_t start = 0; start < total_seeds; start += batch_size) {
-        std::cout << "Searching seeds " << start << " to " << start + batch_size << "..." << std::endl;
+        std::cout << "T4 searching seeds " << start << " to " << start + batch_size << "..." << std::endl;
         
-        search_kernel<<<blocks, threads>>>(start, batch_size, device_locs, (int)host_locs.size());
+        search_kernel<<<blocks_per_grid, threads_per_block>>>(start, batch_size, device_locs, (int)host_locs.size());
         
         cudaError_t err = cudaDeviceSynchronize();
         if (err != cudaSuccess) {
