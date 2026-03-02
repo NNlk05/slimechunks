@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -O3
-for-python: slimechunks.c
-	$(CC) $(CFLAGS) -shared -o slimechunk.so -fPIC slimechunk.c
+for-python: slimechunkss.c
+	$(CC) $(CFLAGS) -shared -o slimechunks.so -fPIC slimechunks.c
 clean:
-	rm -f slimechunk.so
+	rm -f slimechunks.so
 .PHONY: clean
