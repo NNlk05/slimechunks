@@ -77,8 +77,8 @@ int main() {
     cudaMalloc(&device_locs, host_locs.size() * sizeof(ChunkLocation));
     cudaMemcpy(device_locs, host_locs.data(), host_locs.size() * sizeof(ChunkLocation), cudaMemcpyHostToDevice);
 
-    int64_t total_seeds = 1000000000; 
-    int64_t batch_size = 100000000; 
+    int64_t total_seeds = 1000000000000; 
+    int64_t batch_size = 1000000000; 
     int threads = 256;
     int blocks = (batch_size + threads - 1) / threads;
 
