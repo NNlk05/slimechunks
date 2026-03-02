@@ -1,9 +1,12 @@
-#include <stdio.h>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <cstring>
 #include <stdint.h>
-#include <stdbool.h>
 #include <cuda_runtime.h>
 
-struct Location {
+struct ChunkLocation {
     int x;
     int z;
 };
@@ -21,50 +24,57 @@ __device__ bool is_slime_chunk(int64_t world_seed, int x_chunk, int z_chunk) {
     return ((advanced_state >> 17) % 10) == 0;
 }
 
-__global__ void find_seeds_kernel(int64_t start_seed, int64_t max_seeds, Location* locs, int loc_count) {
-    int64_t seed = start_seed + blockIdx.x * blockDim.x + threadIdx.x;
-    
-    if (seed >= max_seeds) return;
+__global__ void search_kernel(int64_t total_seeds, ChunkLocation* locs, int loc_count) {
+    int64_t seed = blockIdx.x * (int64_t)blockDim.x + threadIdx.x;
+    if (seed >= total_seeds) return;
 
     for (int i = 0; i < loc_count; i++) {
-        bool all_match = true;
-        
+        bool match = true;
         for (int dx = -2; dx <= 2; dx++) {
             for (int dz = -2; dz <= 2; dz++) {
                 if (!is_slime_chunk(seed, locs[i].x + dx, locs[i].z + dz)) {
-                    all_match = false;
+                    match = false;
                     break;
                 }
             }
-            if (!all_match) break;
+            if (!match) break;
         }
-
-        if (all_match) {
+        if (match) {
             printf("Found seed: %lld at (%d, %d)\n", (long long)seed, locs[i].x, locs[i].z);
         }
     }
 }
 
 int main() {
-    [cite_start]// Extracted from likely_locations.txt [cite: 1]
-    Location host_locations[] = {
-        {94064, 1164393}, {-1005031, 1164393}, {449815, 1164393}, 
-        {1228102, 1164393}, {-385824, 1164393}, {-98126, 1164393}
-    };
-    int loc_count = sizeof(host_locations) / sizeof(Location);
+    std::vector<ChunkLocation> host_locs;
+    std::ifstream file("likely_locations.txt");
+    std::string line;
 
-    Location* device_locations;
-    cudaMalloc(&device_locations, sizeof(host_locations));
-    cudaMemcpy(device_locations, host_locations, sizeof(host_locations), cudaMemcpyHostToDevice);
+    while (std::getline(file, line)) {
+        if (line.empty()) continue;
+        
+        const char* x_ptr = strstr(line.c_str(), "x=");
+        const char* z_ptr = strstr(line.c_str(), "z=");
+        
+        if (x_ptr && z_ptr) {
+            ChunkLocation loc;
+            sscanf(x_ptr, "x=%d", &loc.x);
+            sscanf(z_ptr, "z=%d", &loc.z);
+            host_locs.push_back(loc);
+        }
+    }
+
+    ChunkLocation* device_locs;
+    cudaMalloc(&device_locs, host_locs.size() * sizeof(ChunkLocation));
+    cudaMemcpy(device_locs, host_locs.data(), host_locs.size() * sizeof(ChunkLocation), cudaMemcpyHostToDevice);
 
     int64_t total_seeds = 1000000;
-    int threads_per_block = 256;
-    int blocks_per_grid = (total_seeds + threads_per_block - 1) / threads_per_block;
+    int threads = 256;
+    int blocks = (total_seeds + threads - 1) / threads;
 
-    find_seeds_kernel<<<blocks_per_grid, threads_per_block>>>(0, total_seeds, device_locations, loc_count);
+    search_kernel<<<blocks, threads>>>(total_seeds, device_locs, (int)host_locs.size());
 
     cudaDeviceSynchronize();
-    cudaFree(device_locations);
-
+    cudaFree(device_locs);
     return 0;
 }
