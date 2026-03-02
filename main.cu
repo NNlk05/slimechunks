@@ -16,12 +16,12 @@ __device__ bool is_slime_chunk(int64_t world_seed, int x_chunk, int z_chunk) {
                          ((uint64_t)x_chunk * x_chunk * 0x4C1906) + 
                          ((uint64_t)x_chunk * 0x5AC0DB) + 
                          ((uint64_t)z_chunk * z_chunk * 0x4307A7) + 
-                         ((uint64_t)z_chunk * 0x5F24F); [cite: 1, 2]
+                         ((uint64_t)z_chunk * 0x5F24F);
 
-    uint64_t internal_state = (slime_seed ^ 0x5E434E432ULL) & 0xFFFFFFFFFFFFULL; [cite: 1, 2]
-    uint64_t advanced_state = (internal_state * 0x5DEECE66DULL + 0xBULL) & 0xFFFFFFFFFFFFULL; [cite: 1, 2]
+    uint64_t internal_state = (slime_seed ^ 0x5E434E432ULL) & 0xFFFFFFFFFFFFULL;
+    uint64_t advanced_state = (internal_state * 0x5DEECE66DULL + 0xBULL) & 0xFFFFFFFFFFFFULL;
 
-    return ((advanced_state >> 17) % 10) == 0; [cite: 1, 2]
+    return ((advanced_state >> 17) % 10) == 0;
 }
 
 __global__ void search_kernel(int64_t start_seed, int64_t batch_size, ChunkLocation* locs, int loc_count) {
@@ -38,7 +38,6 @@ __global__ void search_kernel(int64_t start_seed, int64_t batch_size, ChunkLocat
             }
         }
         
-        // Reports if the area is very dense (20+/25) or a perfect 5x5 (25/25)
         if (match_count >= 20) {
             printf("Seed: %lld | Center: (%d, %d) | Matches: %d/25\n", 
                    (long long)seed, locs[i].x, locs[i].z, match_count);
@@ -70,7 +69,7 @@ int main() {
             ChunkLocation loc;
             sscanf(x_ptr, "x=%d", &loc.x);
             sscanf(z_ptr, "z=%d", &loc.z);
-            host_locs.push_back(loc); [cite: 1, 2]
+            host_locs.push_back(loc);
         }
     }
 
@@ -84,7 +83,7 @@ int main() {
     int blocks = (batch_size + threads - 1) / threads;
 
     for (int64_t start = 0; start < total_seeds; start += batch_size) {
-        std::cout << "Status: Searching seeds " << start << " to " << start + batch_size << "..." << std::endl;
+        std::cout << "Searching seeds " << start << " to " << start + batch_size << "..." << std::endl;
         
         search_kernel<<<blocks, threads>>>(start, batch_size, device_locs, (int)host_locs.size());
         
