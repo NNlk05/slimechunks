@@ -50,6 +50,11 @@ int main() {
     std::ifstream file("likely_locations.txt");
     std::string line;
 
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open likely_locations.txt" << std::endl;
+        return 1;
+    }
+
     while (std::getline(file, line)) {
         if (line.empty()) continue;
         
@@ -58,10 +63,15 @@ int main() {
         
         if (x_ptr && z_ptr) {
             ChunkLocation loc;
-            sscanf(x_ptr, "x=%d", &loc.x);
-            sscanf(z_ptr, "z=%d", &loc.z);
-            host_locs.push_back(loc);
+            if (sscanf(x_ptr, "x=%d", &loc.x) == 1 && sscanf(z_ptr, "z=%d", &loc.z) == 1) {
+                host_locs.push_back(loc);
+            }
         }
+    }
+
+    if (host_locs.empty()) {
+        std::cerr << "Error: No valid locations parsed." << std::endl;
+        return 1;
     }
 
     ChunkLocation* device_locs;
